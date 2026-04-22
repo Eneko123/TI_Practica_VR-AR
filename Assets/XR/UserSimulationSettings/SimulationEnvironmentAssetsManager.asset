@@ -13,6 +13,8 @@ MonoBehaviour:
   m_Name: SimulationEnvironmentAssetsManager
   m_EditorClassIdentifier: 
   m_EnvironmentPrefabPaths:
+  - Assets/Eneko/Prefabs/EnviromentVacio.prefab
+  - Assets/Eneko/Prefabs/EscenarioPracticaAR2.prefab
   - Assets/UnityXRContent/ARFoundation/SimulationEnvironments/Backyard/Backyard_45ftx40ft.prefab
   - Assets/UnityXRContent/ARFoundation/SimulationEnvironments/Backyard/Backyard_55ftx40ft
     1.prefab
