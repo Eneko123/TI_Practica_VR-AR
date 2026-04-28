@@ -5,10 +5,10 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 1
+  - enabled: 0
     path: Assets/Eneko/Scenes/MainParte3.unity
     guid: b4d1bfb62b446ea42bf238a24eb4ebd2
-  - enabled: 1
+  - enabled: 0
     path: Assets/Eneko/Scenes/ARParte3.unity
     guid: f2a1124aafa643f4596d1000b60bfa7d
   - enabled: 1
