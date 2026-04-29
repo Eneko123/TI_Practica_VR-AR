@@ -1,3 +1,4 @@
+ï»¿// Gestiona la deteccion de superficies en realidad aumentada y coloca las gemas
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.XR.ARFoundation;
@@ -7,195 +8,131 @@ using UnityEngine.XR.ARSubsystems;
 public class ARPlaneTracker : MonoBehaviour
 {
     [Header("References")]
+    // Gestor nativo de deteccion de planos
     [SerializeField] private ARPlaneManager planeManager;
+    // Objeto base que se instanciara por cada gema
     [SerializeField] private GameObject gemPrefab;
+    // Contenedor para organizar las gemas creadas
+    [SerializeField] private Transform gemsRoot;
 
-    [Header("Gem Spawn Settings")]
-    [SerializeField] private float gemSpawnHeight = 0.1f;
-    [SerializeField] private float minPlaneSize = 0.5f; // Tamaño mínimo del plano para instanciar gemas
+    [Header("Settings")]
+    // Altura fija sobre el plano donde apareceran las gemas
+    [SerializeField] private float gemSpawnHeight = 0.15f;
+    // Superficie minima que debe tener un plano para ser considerado util
+    [SerializeField] private float minPlaneArea = 0.5f;
 
+    // Lista de superficies que cumplen los requisitos de tamaÃ±o y orientacion
     private List<ARPlane> planosValidos = new List<ARPlane>();
-    private bool gemasInstanciadas = false;
+    // Indica si el sistema esta buscando superficies activamente
+    private bool escaneando = false;
+    // Bloquea la generacion multiple en un mismo ciclo
+    private bool gemasGeneradas = false;
+    // Referencias a las gemas ya colocadas en la escena
     private List<GameObject> gemasActivas = new List<GameObject>();
 
+    // Obtiene componentes necesarios y desactiva la deteccion al inicio
     void Awake()
     {
-        if (planeManager == null)
-            planeManager = GetComponent<ARPlaneManager>();
+        if (planeManager == null) planeManager = GetComponent<ARPlaneManager>();
+        if (gemsRoot == null) gemsRoot = new GameObject("GemsRoot").transform;
+
+        // Desactivado hasta que el usuario lo solicite
+        planeManager.enabled = false;
     }
 
-    void OnEnable()
+    // Se suscribe y se desuscribe de los eventos de cambio de planos
+    void OnEnable() => planeManager.planesChanged += OnPlanesChanged;
+    void OnDisable() => planeManager.planesChanged -= OnPlanesChanged;
+
+    // Activa el escaneo de superficies para realidad aumentada
+    public void IniciarEscaneo()
     {
-        planeManager.planesChanged += OnPlanesChanged;
+        if (escaneando || gemasGeneradas) return;
+        Limpiar();
+        escaneando = true;
+        planeManager.enabled = true;
     }
 
-    void OnDisable()
+    // Detiene el escaneo y genera las gemas en los planos encontrados
+    public void DetenerYGenerarGemas()
     {
-        planeManager.planesChanged -= OnPlanesChanged;
+        if (!escaneando || gemasGeneradas) return;
+        escaneando = false;
+        planeManager.enabled = false; // Congela deteccion actual
+        GenerarGemasInstantaneo();    // Generacion sin espera
     }
 
-    void Start()
-    {
-        // Esperar a que GameManager esté listo
-        if (GameManager.Instance != null)
-        {
-            GameManager.Instance.IniciarJuego();
-        }
-    }
-
+    // Se ejecuta cuando se detectan, actualizan o eliminan planos
     void OnPlanesChanged(ARPlanesChangedEventArgs args)
     {
-        // Actualizar planos añadidos
-        foreach (var plane in args.added)
-        {
-            if (EsPlanoValido(plane))
-            {
-                planosValidos.Add(plane);
-            }
-        }
+        if (!escaneando || gemasGeneradas) return;
 
-        // Actualizar planos modificados
-        foreach (var plane in args.updated)
-        {
-            if (EsPlanoValido(plane) && !planosValidos.Contains(plane))
-            {
-                planosValidos.Add(plane);
-            }
-        }
+        foreach (var p in args.added) if (EsPlanoValido(p)) planosValidos.Add(p);
+        foreach (var p in args.updated) if (EsPlanoValido(p) && !planosValidos.Contains(p)) planosValidos.Add(p);
+        foreach (var p in args.removed) planosValidos.Remove(p);
 
-        // Remover planos eliminados
-        foreach (var plane in args.removed)
-        {
-            planosValidos.Remove(plane);
-        }
-
-        // Actualizar contador de planos
-        ActualizarContadorPlanos();
-
-        // Verificar si podemos instanciar gemas
-        VerificarInstanciarGemas();
+        if (GameManager.Instance != null) GameManager.Instance.ActualizarPlanosDetectados(planosValidos.Count);
     }
 
-    bool EsPlanoValido(ARPlane plane)
+    // Verifica si un plano tiene la orientacion y la dimension adecuadas
+    bool EsPlanoValido(ARPlane p)
     {
-        // Verificar que el plano sea horizontal y tenga un tamaño mínimo
-        if (plane.alignment != PlaneAlignment.HorizontalUp &&
-            plane.alignment != PlaneAlignment.HorizontalDown)
-            return false;
-
-        // Verificar tamaño del plano
-        Vector2 size = plane.size;
-        return (size.x * size.y) >= minPlaneSize;
+        bool horizontal = p.alignment == PlaneAlignment.HorizontalUp || p.alignment == PlaneAlignment.HorizontalDown;
+        bool vertical = p.alignment == PlaneAlignment.Vertical;
+        return (horizontal || vertical) && (p.size.x * p.size.y >= minPlaneArea);
     }
 
-    void ActualizarContadorPlanos()
+    // Coloca las gemas en una rejilla sobre los planos detectados
+    void GenerarGemasInstantaneo()
     {
-        if (GameManager.Instance != null)
+        if (gemasGeneradas || gemPrefab == null || planosValidos.Count == 0)
         {
-            GameManager.Instance.ActualizarPlanosDetectados(planosValidos.Count);
-        }
-    }
-
-    void VerificarInstanciarGemas()
-    {
-        if (gemasInstanciadas) return;
-        if (GameManager.Instance == null) return;
-
-        int gemasNecesarias = GameManager.Instance.GetTotalGemas();
-        int planosNecesarios = Mathf.CeilToInt(gemasNecesarias / 3f); // Al menos 1 plano por cada 3 gemas
-
-        if (planosValidos.Count >= planosNecesarios)
-        {
-            InstanciarGemas();
-        }
-    }
-
-    void InstanciarGemas()
-    {
-        if (gemPrefab == null)
-        {
-            Debug.LogError("Gem Prefab no asignado en ARPlaneTracker!");
+            Debug.LogError("No se pueden generar gemas: falta prefab o no hay planos validos.");
             return;
         }
+
+        gemasGeneradas = true; // Bloquea llamadas repetidas
 
         int verticales = GameManager.Instance.GetGemasVerticales();
         int horizontales = GameManager.Instance.GetGemasHorizontales();
+        int planoIndex = 0;
 
-        // Seleccionar el plano más grande para instanciar las gemas
-        ARPlane planoMasGrande = ObtenerPlanoMasGrande();
-
-        if (planoMasGrande == null)
-        {
-            Debug.LogWarning("No hay planos suficientemente grandes para instanciar gemas");
-            return;
-        }
-
-        // Calcular distribución de gemas
-        Vector2 planeSize = planoMasGrande.size;
-        float espacioX = planeSize.x / (horizontales + 1);
-        float espacioZ = planeSize.y / (verticales + 1);
-
-        Vector3 planeCenter = planoMasGrande.center;
-        Quaternion planeRotation = planoMasGrande.transform.rotation;
-
+        // Bucle exacto: se ejecuta (V x H) veces en el mismo frame
         for (int v = 0; v < verticales; v++)
         {
             for (int h = 0; h < horizontales; h++)
             {
-                // Calcular posición relativa al centro del plano
-                float offsetX = (h + 1) * espacioX - planeSize.x / 2f;
-                float offsetZ = (v + 1) * espacioZ - planeSize.y / 2f;
+                ARPlane target = planosValidos[planoIndex % planosValidos.Count];
+                Vector3 pos = CalcularPosicionEnPlano(target, v, h, verticales, horizontales);
 
-                Vector3 localPos = new Vector3(offsetX, gemSpawnHeight, offsetZ);
-                Vector3 worldPos = planoMasGrande.transform.TransformPoint(localPos);
-
-                // Instanciar gema
-                GameObject gem = Instantiate(gemPrefab, worldPos, Quaternion.identity);
-                gem.transform.SetParent(planoMasGrande.transform);
+                GameObject gem = Instantiate(gemPrefab, pos, Quaternion.identity, gemsRoot);
                 gemasActivas.Add(gem);
+
+                planoIndex++;
             }
         }
 
-        gemasInstanciadas = true;
-        Debug.Log($"Gemas instanciadas: {gemasActivas.Count}");
+        Debug.Log($"{gemasActivas.Count} gemas generadas al instante. Iniciando cronometro...");
+        if (GameManager.Instance != null) GameManager.Instance.IniciarJuego();
     }
 
-    ARPlane ObtenerPlanoMasGrande()
+    // Calcula la posicion exacta de cada gema dentro de un plano
+    Vector3 CalcularPosicionEnPlano(ARPlane plane, int v, int h, int totalV, int totalH)
     {
-        ARPlane planoMasGrande = null;
-        float areaMaxima = 0f;
-
-        foreach (var plane in planosValidos)
-        {
-            float area = plane.size.x * plane.size.y;
-            if (area > areaMaxima)
-            {
-                areaMaxima = area;
-                planoMasGrande = plane;
-            }
-        }
-
-        return planoMasGrande;
+        float espacioX = plane.size.x / (totalH + 1);
+        float espacioZ = plane.size.y / (totalV + 1);
+        float offsetX = (h + 1) * espacioX - plane.size.x / 2f;
+        float offsetZ = (v + 1) * espacioZ - plane.size.y / 2f;
+        return plane.transform.TransformPoint(new Vector3(offsetX, gemSpawnHeight, offsetZ));
     }
 
-    // Método para limpiar gemas al reiniciar
-    public void LimpiarGemas()
+    // Elimina gemas anteriores y reinicia el estado del escaneo
+    void Limpiar()
     {
-        foreach (var gem in gemasActivas)
-        {
-            if (gem != null)
-                Destroy(gem);
-        }
+        foreach (var g in gemasActivas) if (g != null) Destroy(g);
         gemasActivas.Clear();
-        gemasInstanciadas = false;
-    }
-
-    // Visualización de planos (opcional)
-    public void MostrarPlanos(bool mostrar)
-    {
-        foreach (var plane in planeManager.trackables)
-        {
-            plane.gameObject.SetActive(mostrar);
-        }
+        planosValidos.Clear();
+        escaneando = false;
+        gemasGeneradas = false;
     }
 }

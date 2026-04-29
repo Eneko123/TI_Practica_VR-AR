@@ -1,80 +1,58 @@
+﻿// Controla el comportamiento individual de cada gema
 using UnityEngine;
-
+using System.Collections;
 public class GemCollectable : MonoBehaviour
 {
-    [Header("Visual Settings")]
-    [SerializeField] private float rotationSpeed = 50f;
-    [SerializeField] private float floatAmplitude = 0.1f;
-    [SerializeField] private float floatSpeed = 2f;
+    [Header("Config")]
+    // Distancia maxima desde la camara para activar la recoleccion
+    [SerializeField] private float collectDistance = 1.5f;
+    // Duracion de la animacion antes de eliminar el objeto
+    [SerializeField] private float collectDuration = 0.3f;
 
-    [Header("Effects")]
-    [SerializeField] private ParticleSystem collectEffect;
-    [SerializeField] private AudioClip collectSound;
-
-    private Vector3 startPosition;
+    private Camera arCamera;
     private bool isCollected = false;
 
-    void Start()
+    // Busca la camara principal al iniciar
+    void Awake()
     {
-        startPosition = transform.position;
+        arCamera = Camera.main;
+        if (arCamera == null) Debug.LogError("No se encontro Camera.main. Asigna manualmente la camara AR.");
     }
 
+    // Comprueba continuamente la separacion entre la gema y la lente
     void Update()
     {
-        if (!isCollected)
+        if (isCollected || arCamera == null) return;
+
+        float distance = Vector3.Distance(transform.position, arCamera.transform.position);
+        if (distance <= collectDistance)
         {
-            AnimateGem();
+            Collect();
         }
     }
 
-    void AnimateGem()
-    {
-        // Rotacion continua
-        transform.Rotate(Vector3.up, rotationSpeed * Time.deltaTime);
-
-        // Movimiento de flotacion
-        float newY = startPosition.y + Mathf.Sin(Time.time * floatSpeed) * floatAmplitude;
-        transform.position = new Vector3(transform.position.x, newY, transform.position.z);
-    }
-
-    // Este metodo se llama cuando se toca la gema
-    public void OnGemTouched()
-    {
-        if (isCollected) return;
-
-        CollectGem();
-    }
-
-    void CollectGem()
+    // Inicia el proceso de recoleccion cuando el jugador se acerca
+    void Collect()
     {
         isCollected = true;
 
-        // Notificar al GameManager
         if (GameManager.Instance != null)
-        {
             GameManager.Instance.RecogerGema();
-        }
 
-        // Reproducir efecto de particulas
-        if (collectEffect != null)
-        {
-            ParticleSystem effect = Instantiate(collectEffect, transform.position, Quaternion.identity);
-            Destroy(effect.gameObject, 2f);
-        }
-
-        // Reproducir sonido
-        if (collectSound != null && AudioManager.Instance != null)
-        {
-            AudioManager.Instance.PlaySound(collectSound);
-        }
-
-        // Destruir la gema
-        Destroy(gameObject);
+        StartCoroutine(CollectRoutine());
     }
 
-    // Deteccion por tap usando raycast desde el ARRaycastManager
-    void OnMouseDown()
+    // Reduce el tamaño de la gema progresivamente y la elimina al terminar
+    private IEnumerator CollectRoutine()
     {
-        OnGemTouched();
+        Vector3 startScale = transform.localScale;
+        float t = 0f;
+        while (t < collectDuration)
+        {
+            t += Time.deltaTime;
+            transform.localScale = Vector3.Lerp(startScale, Vector3.zero, t / collectDuration);
+            yield return null;
+        }
+        Destroy(gameObject);
     }
 }

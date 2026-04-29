@@ -1,136 +1,137 @@
+ï»¿// Controla la interfaz de usuario y la transicion entre pantallas
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-
 public class GameUIManager : MonoBehaviour
 {
     [Header("UI Elements")]
+    // Textos para cronometro, contador de gemas y progreso de escaneo
     [SerializeField] private TextMeshProUGUI tiempoText;
     [SerializeField] private TextMeshProUGUI gemasText;
     [SerializeField] private TextMeshProUGUI planosText;
+    // Paneles que se muestran segun la fase del juego
     [SerializeField] private GameObject panelInicio;
     [SerializeField] private GameObject panelJuego;
     [SerializeField] private GameObject panelFin;
     [SerializeField] private TextMeshProUGUI mensajeFinalText;
+    // Botones de la pantalla principal y final
+    [SerializeField] private Button crearButton;
     [SerializeField] private Button reiniciarButton;
     [SerializeField] private Button salirButton;
 
+    [Header("Tracker Reference")]
+    [SerializeField] private ARPlaneTracker planeTracker;
+
     [Header("Colors")]
+    // Colores dinamicos para indicar urgencia en el tiempo
     [SerializeField] private Color tiempoNormalColor = Color.white;
     [SerializeField] private Color tiempoWarningColor = Color.yellow;
     [SerializeField] private Color tiempoUrgentColor = Color.red;
 
+    // Estados posibles de la pantalla principal
+    private enum Estado { Esperando, Escaneando, Jugando }
+    private Estado estadoActual = Estado.Esperando;
+
+    // Conecta los eventos del gestor de juego con la interfaz
     void Start()
     {
         if (GameManager.Instance != null)
         {
-            // Suscribirse a eventos
             GameManager.Instance.OnTiempoActualizado += ActualizarTiempo;
             GameManager.Instance.OnGemaRecogida += ActualizarGemas;
             GameManager.Instance.OnPlanoDetectado += ActualizarPlanos;
             GameManager.Instance.OnJuegoTerminado += MostrarPanelFinal;
         }
 
-        // Configurar botones
-        if (reiniciarButton != null)
-            reiniciarButton.onClick.AddListener(OnReiniciarClick);
+        if (crearButton != null) crearButton.onClick.AddListener(OnCrearClick);
+        if (reiniciarButton != null) reiniciarButton.onClick.AddListener(OnReiniciarClick);
+        if (salirButton != null) salirButton.onClick.AddListener(OnSalirClick);
 
-        if (salirButton != null)
-            salirButton.onClick.AddListener(OnSalirClick);
-
-        // Mostrar panel de inicio
         MostrarPanelInicio();
     }
 
+    // Muestra la pantalla de inicio y reinicia los textos
     void MostrarPanelInicio()
     {
-        if (panelInicio != null) panelInicio.SetActive(true);
-        if (panelJuego != null) panelJuego.SetActive(false);
-        if (panelFin != null) panelFin.SetActive(false);
+        estadoActual = Estado.Esperando;
+        panelInicio?.SetActive(true);
+        panelJuego?.SetActive(false);
+        panelFin?.SetActive(false);
 
-        // Mostrar instrucciones de escaneo
-        if (planosText != null)
-            planosText.text = "Escanea el entorno para detectar planos...";
+        planosText.text = "Pulsa CREAR para empezar a detectar planos...";
+        gemasText.text = $"Gemas: 0/{GameManager.Instance?.GetTotalGemas() ?? 0}";
+        tiempoText.text = "00:00";
+        ActualizarTextoBoton();
     }
 
-    void OnEnable()
+    // Maneja el boton de crear: primer click escanea, segundo genera
+    void OnCrearClick()
     {
-        // Despues de unos segundos, ocultar el panel de inicio
-        Invoke(nameof(OcultarPanelInicio), 3f);
+        if (estadoActual == Estado.Esperando)
+        {
+            planeTracker?.IniciarEscaneo();
+            estadoActual = Estado.Escaneando;
+            planosText.text = "Escaneando... Muevete para capturar planos. Pulsa de nuevo para generar gemas.";
+        }
+        else if (estadoActual == Estado.Escaneando)
+        {
+            planeTracker?.DetenerYGenerarGemas();
+            estadoActual = Estado.Jugando;
+            panelInicio?.SetActive(false);
+            panelJuego?.SetActive(true);
+        }
+        ActualizarTextoBoton();
     }
 
-    void OcultarPanelInicio()
+    // Cambia el texto del boton segun el estado actual
+    void ActualizarTextoBoton()
     {
-        if (panelInicio != null) panelInicio.SetActive(false);
-        if (panelJuego != null) panelJuego.SetActive(true);
+        if (crearButton == null) return;
+        var txt = crearButton.GetComponentInChildren<TextMeshProUGUI>();
+        if (txt == null) return;
 
-        // Inicializar UI
-        ActualizarTiempo(GameManager.Instance.GetPlayTime());
-        ActualizarGemas(0, GameManager.Instance.GetTotalGemas());
-        ActualizarPlanos(0);
+        switch (estadoActual)
+        {
+            case Estado.Esperando: txt.text = "INICIAR ESCANEO"; break;
+            case Estado.Escaneando: txt.text = "DETENER Y CREAR GEMAS"; break;
+            case Estado.Jugando: txt.text = "EN JUEGO"; crearButton.interactable = false; break;
+        }
     }
 
+    // Actualiza el cronometro y cambia su color segun el tiempo restante
     void ActualizarTiempo(float tiempoRestante)
     {
         if (tiempoText == null) return;
+        int m = Mathf.FloorToInt(tiempoRestante / 60f);
+        int s = Mathf.FloorToInt(tiempoRestante % 60f);
+        tiempoText.text = $"{m:00}:{s:00}";
 
-        int minutos = Mathf.FloorToInt(tiempoRestante / 60f);
-        int segundos = Mathf.FloorToInt(tiempoRestante % 60f);
-
-        tiempoText.text = $"{minutos:00}:{segundos:00}";
-
-        // Cambiar color segun el tiempo restante
-        if (tiempoRestante > 30f)
-            tiempoText.color = tiempoNormalColor;
-        else if (tiempoRestante > 10f)
-            tiempoText.color = tiempoWarningColor;
-        else
-            tiempoText.color = tiempoUrgentColor;
+        if (tiempoRestante > 30f) tiempoText.color = tiempoNormalColor;
+        else if (tiempoRestante > 10f) tiempoText.color = tiempoWarningColor;
+        else tiempoText.color = tiempoUrgentColor;
     }
 
-    void ActualizarGemas(int recogidas, int total)
-    {
-        if (gemasText == null) return;
-        gemasText.text = $"Gemas: {recogidas}/{total}";
-    }
+    // Actualiza los contadores de gemas y planos en pantalla
+    void ActualizarGemas(int recogidas, int total) => gemasText.text = $"Gemas: {recogidas}/{total}";
+    void ActualizarPlanos(int cantidad) => planosText.text = $"Planos detectados: {cantidad}";
 
-    void ActualizarPlanos(int cantidad)
-    {
-        if (planosText == null) return;
-        planosText.text = $"Planos detectados: {cantidad}";
-    }
-
+    // Muestra la pantalla final con el resultado de la partida
     void MostrarPanelFinal(bool victoria)
     {
-        if (panelJuego != null) panelJuego.SetActive(false);
-        if (panelFin != null) panelFin.SetActive(true);
+        panelJuego?.SetActive(false);
+        panelFin?.SetActive(true);
 
         if (mensajeFinalText != null)
         {
-            if (victoria)
-            {
-                mensajeFinalText.text = $"¡VICTORIA!\n\nHas recogido todas las gemas\n" +
-                                      $"Gemas: {GameManager.Instance.GetGemasRecogidas()}/{GameManager.Instance.GetTotalGemas()}\n" +
-                                      $"Tiempo restante: {Mathf.FloorToInt(GameManager.Instance.GetTiempoRestante())}s";
-                mensajeFinalText.color = Color.green;
-            }
-            else
-            {
-                mensajeFinalText.text = $"TIEMPO AGOTADO\n\nGemas recogidas: {GameManager.Instance.GetGemasRecogidas()}/{GameManager.Instance.GetTotalGemas()}\n" +
-                                      "¡Inténtalo de nuevo!";
-                mensajeFinalText.color = Color.red;
-            }
+            mensajeFinalText.color = victoria ? Color.green : Color.red;
+            mensajeFinalText.text = victoria
+                ? $"VICTORIA\n\nHas recogido todas las gemas\nGemas: {GameManager.Instance.GetGemasRecogidas()}/{GameManager.Instance.GetTotalGemas()}\nTiempo restante: {Mathf.FloorToInt(GameManager.Instance.GetTiempoRestante())}s"
+                : $"TIEMPO AGOTADO\n\nGemas recogidas: {GameManager.Instance.GetGemasRecogidas()}/{GameManager.Instance.GetTotalGemas()}\nIntentelo de nuevo!";
         }
     }
 
-    void OnReiniciarClick()
-    {
-        if (GameManager.Instance != null)
-        {
-            GameManager.Instance.ReiniciarJuego();
-        }
-    }
-
+    // Reinicia el juego o cierra la aplicacion segun el boton
+    void OnReiniciarClick() => GameManager.Instance?.ReiniciarJuego();
     void OnSalirClick()
     {
 #if UNITY_EDITOR
@@ -140,9 +141,9 @@ public class GameUIManager : MonoBehaviour
 #endif
     }
 
+    // Desconecta los eventos al destruir el objeto para evitar errores
     void OnDestroy()
     {
-        // Desuscribirse de eventos
         if (GameManager.Instance != null)
         {
             GameManager.Instance.OnTiempoActualizado -= ActualizarTiempo;
@@ -150,12 +151,5 @@ public class GameUIManager : MonoBehaviour
             GameManager.Instance.OnPlanoDetectado -= ActualizarPlanos;
             GameManager.Instance.OnJuegoTerminado -= MostrarPanelFinal;
         }
-
-        // Limpiar listeners de botones
-        if (reiniciarButton != null)
-            reiniciarButton.onClick.RemoveAllListeners();
-
-        if (salirButton != null)
-            salirButton.onClick.RemoveAllListeners();
     }
 }
