@@ -791,8 +791,8 @@ MonoBehaviour:
   <trackablesChanged>k__BackingField:
     m_PersistentCalls:
       m_Calls: []
-  m_PlanePrefab: {fileID: 0}
-  m_DetectionMode: 1
+  m_PlanePrefab: {fileID: 1228782570422579353, guid: 1f1cc98add0352a4fad3b990d611bdfa, type: 3}
+  m_DetectionMode: 3
 --- !u!1 &189825005
 GameObject:
   m_ObjectHideFlags: 0
@@ -2019,105 +2019,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 448127203}
   m_CullTransparentMesh: 1
---- !u!1 &541819991
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 541819996}
-  - component: {fileID: 541819995}
-  - component: {fileID: 541819994}
-  - component: {fileID: 541819993}
-  - component: {fileID: 541819992}
-  m_Layer: 0
-  m_Name: ARController
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &541819992
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 541819991}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5f9933effa649a44795b58090358bf2e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  raycastManager: {fileID: 0}
-  arCamera: {fileID: 204079965}
---- !u!114 &541819993
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 541819991}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8b860b6daf1e7d54a9fc7a4e4f7709dd, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  planeManager: {fileID: 541819994}
-  gemPrefab: {fileID: 2964895851718909944, guid: bc22caadf04bd784dab772eac11e6ded, type: 3}
-  gemSpawnHeight: 0.1
-  minPlaneSize: 0.5
---- !u!114 &541819994
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 541819991}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e1760703bbd54c04488a8d10600262ab, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  <trackablesChanged>k__BackingField:
-    m_PersistentCalls:
-      m_Calls: []
-  m_PlanePrefab: {fileID: 0}
-  m_DetectionMode: -1
---- !u!114 &541819995
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 541819991}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e0cb9aa70a22847b5925ee5f067c10a9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_Camera: {fileID: 204079965}
-  m_OriginBaseGameObject: {fileID: 541819991}
-  m_CameraFloorOffsetObject: {fileID: 1798668723}
-  m_RequestedTrackingOriginMode: 0
-  m_CameraYOffset: 1.1176
---- !u!4 &541819996
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 541819991}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.7185493, y: 0.6321461, z: 3.4404306}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &763785013
 GameObject:
   m_ObjectHideFlags: 0
@@ -3210,8 +3111,8 @@ MonoBehaviour:
   occlusionToggle: {fileID: 863623295}
   startButton: {fileID: 189825007}
   defaultPlayTime: 60
-  defaultGemasVerticales: 3
-  defaultGemasHorizontales: 3
+  defaultGemasVerticales: 4
+  defaultGemasHorizontales: 4
 --- !u!1 &1525184260
 GameObject:
   m_ObjectHideFlags: 0
@@ -4068,4 +3969,3 @@ SceneRoots:
   - {fileID: 268781507}
   - {fileID: 218832686}
   - {fileID: 85357554}
-  - {fileID: 541819996}
