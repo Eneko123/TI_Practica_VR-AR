@@ -479,7 +479,6 @@ MonoBehaviour:
   gemsRoot: {fileID: 0}
   gemSpawnHeight: 0.1
   minPlaneArea: 0.5
-  spawnDelay: 0.4
 --- !u!1 &449194402
 GameObject:
   m_ObjectHideFlags: 0
@@ -807,6 +806,7 @@ RectTransform:
   m_Children:
   - {fileID: 2011320750}
   - {fileID: 113264346}
+  - {fileID: 1030572855}
   m_Father: {fileID: 1316484986}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -962,7 +962,6 @@ RectTransform:
   m_Children:
   - {fileID: 950922726}
   - {fileID: 2069297336}
-  - {fileID: 1030572855}
   m_Father: {fileID: 1316484986}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -1331,12 +1330,12 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1030572854}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 731276375}
+  m_Father: {fileID: 536975971}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
@@ -1745,10 +1744,12 @@ MonoBehaviour:
   crearButton: {fileID: 113264347}
   reiniciarButton: {fileID: 2016306156}
   salirButton: {fileID: 873038483}
+  planeTracker: {fileID: 407112668}
   tiempoNormalColor: {r: 1, g: 1, b: 1, a: 1}
   tiempoWarningColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   tiempoUrgentColor: {r: 1, g: 0, b: 0, a: 1}
-  planeTracker: {fileID: 407112668}
+  planosInsuficientesColor: {r: 1, g: 0, b: 0, a: 1}
+  planosListosColor: {r: 0, g: 1, b: 0, a: 1}
 --- !u!114 &1316484983
 MonoBehaviour:
   m_ObjectHideFlags: 0

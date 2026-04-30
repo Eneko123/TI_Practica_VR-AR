@@ -67,7 +67,8 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    // Multiplica las filas y columnas para obtener el objetivo total
+    // Suma las gemas verticales y horizontales para obtener el objetivo total
+    // CORREGIDO: Ahora el total es la suma, no la multiplicación
     void CalcularTotalGemas()
     {
         totalGemas = gemasVerticales + gemasHorizontales;
@@ -108,7 +109,10 @@ public class GameManager : MonoBehaviour
         OnGemaRecogida?.Invoke(gemasRecogidas, totalGemas);
         Debug.Log($"Gema recogida: {gemasRecogidas}/{totalGemas}");
 
-        if (gemasRecogidas >= totalGemas) OnJuegoTerminado?.Invoke(true);
+        if (gemasRecogidas >= totalGemas)
+        {
+            TerminarJuego(true);
+        }
     }
 
     // Envoltorio que notifica a la interfaz sobre el progreso del escaneo

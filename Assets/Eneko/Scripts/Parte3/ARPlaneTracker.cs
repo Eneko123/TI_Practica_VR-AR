@@ -51,14 +51,36 @@ public class ARPlaneTracker : MonoBehaviour
         Limpiar();
         escaneando = true;
         planeManager.enabled = true;
+
+        // Hacer visibles los planos durante el escaneo
+        foreach (var plane in planeManager.trackables)
+        {
+            plane.gameObject.SetActive(true);
+        }
     }
 
     // Detiene el escaneo y genera las gemas en los planos encontrados
     public void DetenerYGenerarGemas()
     {
         if (!escaneando || gemasGeneradas) return;
+
+        // Verificar que hay suficientes planos
+        int planosNecesarios = GameManager.Instance.GetTotalGemas();
+        if (planosValidos.Count < planosNecesarios)
+        {
+            Debug.LogWarning($"Planos insuficientes: {planosValidos.Count}/{planosNecesarios}");
+            return;
+        }
+
         escaneando = false;
         planeManager.enabled = false; // Congela deteccion actual
+
+        // Ocultar los planos una vez generadas las gemas
+        foreach (var plane in planeManager.trackables)
+        {
+            plane.gameObject.SetActive(false);
+        }
+
         GenerarGemasInstantaneo();    // Generacion sin espera
     }
 
@@ -67,11 +89,40 @@ public class ARPlaneTracker : MonoBehaviour
     {
         if (!escaneando || gemasGeneradas) return;
 
-        foreach (var p in args.added) if (EsPlanoValido(p)) planosValidos.Add(p);
-        foreach (var p in args.updated) if (EsPlanoValido(p) && !planosValidos.Contains(p)) planosValidos.Add(p);
-        foreach (var p in args.removed) planosValidos.Remove(p);
+        // Procesar planos añadidos
+        foreach (var p in args.added)
+        {
+            if (EsPlanoValido(p))
+            {
+                planosValidos.Add(p);
+                p.gameObject.SetActive(true); // Mostrar plano en tiempo real
+            }
+        }
 
-        if (GameManager.Instance != null) GameManager.Instance.ActualizarPlanosDetectados(planosValidos.Count);
+        // Procesar planos actualizados
+        foreach (var p in args.updated)
+        {
+            if (EsPlanoValido(p) && !planosValidos.Contains(p))
+            {
+                planosValidos.Add(p);
+                p.gameObject.SetActive(true);
+            }
+            else if (!EsPlanoValido(p) && planosValidos.Contains(p))
+            {
+                planosValidos.Remove(p);
+            }
+        }
+
+        // Procesar planos eliminados
+        foreach (var p in args.removed)
+        {
+            planosValidos.Remove(p);
+        }
+
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.ActualizarPlanosDetectados(planosValidos.Count);
+        }
     }
 
     // Verifica si un plano tiene la orientacion y la dimension adecuadas
@@ -82,7 +133,7 @@ public class ARPlaneTracker : MonoBehaviour
         return (horizontal || vertical) && (p.size.x * p.size.y >= minPlaneArea);
     }
 
-    // Coloca las gemas en una rejilla sobre los planos detectados
+    // Coloca UNA gema por cada plano detectado
     void GenerarGemasInstantaneo()
     {
         if (gemasGeneradas || gemPrefab == null || planosValidos.Count == 0)
@@ -93,37 +144,27 @@ public class ARPlaneTracker : MonoBehaviour
 
         gemasGeneradas = true; // Bloquea llamadas repetidas
 
-        int verticales = GameManager.Instance.GetGemasVerticales();
-        int horizontales = GameManager.Instance.GetGemasHorizontales();
-        int planoIndex = 0;
+        int totalGemas = GameManager.Instance.GetTotalGemas();
 
-        // Bucle exacto: se ejecuta (V x H) veces en el mismo frame
-        for (int v = 0; v < verticales; v++)
+        // Instanciar UNA gema por plano (hasta alcanzar el total necesario)
+        for (int i = 0; i < Mathf.Min(totalGemas, planosValidos.Count); i++)
         {
-            for (int h = 0; h < horizontales; h++)
-            {
-                ARPlane target = planosValidos[planoIndex % planosValidos.Count];
-                Vector3 pos = CalcularPosicionEnPlano(target, v, h, verticales, horizontales);
+            ARPlane plano = planosValidos[i];
+            Vector3 pos = CalcularPosicionCentralEnPlano(plano);
 
-                GameObject gem = Instantiate(gemPrefab, pos, Quaternion.identity, gemsRoot);
-                gemasActivas.Add(gem);
-
-                planoIndex++;
-            }
+            GameObject gem = Instantiate(gemPrefab, pos, Quaternion.identity, gemsRoot);
+            gemasActivas.Add(gem);
         }
 
-        Debug.Log($"{gemasActivas.Count} gemas generadas al instante. Iniciando cronometro...");
+        Debug.Log($"{gemasActivas.Count} gemas generadas (una por plano). Iniciando cronometro...");
         if (GameManager.Instance != null) GameManager.Instance.IniciarJuego();
     }
 
-    // Calcula la posicion exacta de cada gema dentro de un plano
-    Vector3 CalcularPosicionEnPlano(ARPlane plane, int v, int h, int totalV, int totalH)
+    // Calcula la posicion central de la gema en el plano
+    Vector3 CalcularPosicionCentralEnPlano(ARPlane plane)
     {
-        float espacioX = plane.size.x / (totalH + 1);
-        float espacioZ = plane.size.y / (totalV + 1);
-        float offsetX = (h + 1) * espacioX - plane.size.x / 2f;
-        float offsetZ = (v + 1) * espacioZ - plane.size.y / 2f;
-        return plane.transform.TransformPoint(new Vector3(offsetX, gemSpawnHeight, offsetZ));
+        // Colocar la gema en el centro del plano
+        return plane.transform.TransformPoint(new Vector3(0, gemSpawnHeight, 0));
     }
 
     // Elimina gemas anteriores y reinicia el estado del escaneo
@@ -134,5 +175,17 @@ public class ARPlaneTracker : MonoBehaviour
         planosValidos.Clear();
         escaneando = false;
         gemasGeneradas = false;
+    }
+
+    // Metodo publico para verificar si hay suficientes planos
+    public bool TienePlanosMinimos()
+    {
+        return planosValidos.Count >= GameManager.Instance.GetTotalGemas();
+    }
+
+    // Obtener el numero de planos necesarios
+    public int GetPlanosNecesarios()
+    {
+        return GameManager.Instance != null ? GameManager.Instance.GetTotalGemas() : 0;
     }
 }

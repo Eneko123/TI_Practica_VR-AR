@@ -27,6 +27,9 @@ public class GameUIManager : MonoBehaviour
     [SerializeField] private Color tiempoNormalColor = Color.white;
     [SerializeField] private Color tiempoWarningColor = Color.yellow;
     [SerializeField] private Color tiempoUrgentColor = Color.red;
+    // Colores para el estado de planos
+    [SerializeField] private Color planosInsuficientesColor = Color.red;
+    [SerializeField] private Color planosListosColor = Color.green;
 
     // Estados posibles de la pantalla principal
     private enum Estado { Esperando, Escaneando, Jugando }
@@ -58,8 +61,10 @@ public class GameUIManager : MonoBehaviour
         panelJuego?.SetActive(false);
         panelFin?.SetActive(false);
 
-        planosText.text = "Pulsa CREAR para empezar a detectar planos...";
-        gemasText.text = $"Gemas: 0/{GameManager.Instance?.GetTotalGemas() ?? 0}";
+        int totalGemas = GameManager.Instance?.GetTotalGemas() ?? 0;
+        planosText.text = $"Pulsa INICIAR ESCANEO para detectar planos...\nPlanos necesarios: {totalGemas}";
+        planosText.color = Color.white;
+        gemasText.text = $"Gemas: 0/{totalGemas}";
         tiempoText.text = "00:00";
         ActualizarTextoBoton();
     }
@@ -71,14 +76,30 @@ public class GameUIManager : MonoBehaviour
         {
             planeTracker?.IniciarEscaneo();
             estadoActual = Estado.Escaneando;
-            planosText.text = "Escaneando... Muevete para capturar planos. Pulsa de nuevo para generar gemas.";
+            int planosNecesarios = planeTracker?.GetPlanosNecesarios() ?? 0;
+            planosText.text = $"Escaneando... Muévete para capturar planos.\nPlanos: 0/{planosNecesarios}";
+            planosText.color = planosInsuficientesColor;
         }
         else if (estadoActual == Estado.Escaneando)
         {
-            planeTracker?.DetenerYGenerarGemas();
-            estadoActual = Estado.Jugando;
-            panelInicio?.SetActive(false);
-            panelJuego?.SetActive(true);
+            // Verificar que hay suficientes planos antes de generar
+            if (planeTracker != null && planeTracker.TienePlanosMinimos())
+            {
+                planeTracker.DetenerYGenerarGemas();
+                estadoActual = Estado.Jugando;
+                panelInicio?.SetActive(false);
+                panelJuego?.SetActive(true);
+            }
+            else
+            {
+                // Mostrar advertencia si no hay suficientes planos
+                int planosActuales = GameManager.Instance?.GetPlanosDetectados() ?? 0;
+                int planosNecesarios = planeTracker?.GetPlanosNecesarios() ?? 0;
+                planosText.text = $"¡PLANOS INSUFICIENTES!\nPlanos: {planosActuales}/{planosNecesarios}\nSigue escaneando...";
+                planosText.color = planosInsuficientesColor;
+
+                AudioManager.Instance?.PlayUIClickSound();
+            }
         }
         ActualizarTextoBoton();
     }
@@ -92,9 +113,22 @@ public class GameUIManager : MonoBehaviour
 
         switch (estadoActual)
         {
-            case Estado.Esperando: txt.text = "INICIAR ESCANEO"; break;
-            case Estado.Escaneando: txt.text = "DETENER Y CREAR GEMAS"; break;
-            case Estado.Jugando: txt.text = "EN JUEGO"; crearButton.interactable = false; break;
+            case Estado.Esperando:
+                txt.text = "INICIAR ESCANEO";
+                crearButton.interactable = true;
+                break;
+
+            case Estado.Escaneando:
+                // Verificar si hay suficientes planos
+                bool tieneSuficientes = planeTracker != null && planeTracker.TienePlanosMinimos();
+                txt.text = tieneSuficientes ? "DETENER Y CREAR GEMAS" : "CREAR GEMAS (Planos insuficientes)";
+                crearButton.interactable = true;
+                break;
+
+            case Estado.Jugando:
+                txt.text = "EN JUEGO";
+                crearButton.interactable = false;
+                break;
         }
     }
 
@@ -113,7 +147,33 @@ public class GameUIManager : MonoBehaviour
 
     // Actualiza los contadores de gemas y planos en pantalla
     void ActualizarGemas(int recogidas, int total) => gemasText.text = $"Gemas: {recogidas}/{total}";
-    void ActualizarPlanos(int cantidad) => planosText.text = $"Planos detectados: {cantidad}";
+
+    void ActualizarPlanos(int cantidad)
+    {
+        if (estadoActual == Estado.Escaneando)
+        {
+            int planosNecesarios = planeTracker?.GetPlanosNecesarios() ?? 0;
+            planosText.text = $"Escaneando planos...\nPlanos: {cantidad}/{planosNecesarios}";
+
+            // Cambiar color según si hay suficientes planos
+            if (cantidad >= planosNecesarios)
+            {
+                planosText.color = planosListosColor;
+                planosText.text = $"¡PLANOS LISTOS!\nPlanos: {cantidad}/{planosNecesarios}\nPulsa CREAR GEMAS para comenzar";
+            }
+            else
+            {
+                planosText.color = planosInsuficientesColor;
+            }
+
+            // Actualizar el texto del botón
+            ActualizarTextoBoton();
+        }
+        else
+        {
+            planosText.text = $"Planos detectados: {cantidad}";
+        }
+    }
 
     // Muestra la pantalla final con el resultado de la partida
     void MostrarPanelFinal(bool victoria)
@@ -125,8 +185,8 @@ public class GameUIManager : MonoBehaviour
         {
             mensajeFinalText.color = victoria ? Color.green : Color.red;
             mensajeFinalText.text = victoria
-                ? $"VICTORIA\n\nHas recogido todas las gemas\nGemas: {GameManager.Instance.GetGemasRecogidas()}/{GameManager.Instance.GetTotalGemas()}\nTiempo restante: {Mathf.FloorToInt(GameManager.Instance.GetTiempoRestante())}s"
-                : $"TIEMPO AGOTADO\n\nGemas recogidas: {GameManager.Instance.GetGemasRecogidas()}/{GameManager.Instance.GetTotalGemas()}\nIntentelo de nuevo!";
+                ? $"¡VICTORIA!\n\nHas recogido todas las gemas\nGemas: {GameManager.Instance.GetGemasRecogidas()}/{GameManager.Instance.GetTotalGemas()}\nTiempo restante: {Mathf.FloorToInt(GameManager.Instance.GetTiempoRestante())}s"
+                : $"TIEMPO AGOTADO\n\nGemas recogidas: {GameManager.Instance.GetGemasRecogidas()}/{GameManager.Instance.GetTotalGemas()}\n¡Inténtalo de nuevo!";
         }
     }
 

@@ -3111,8 +3111,8 @@ MonoBehaviour:
   occlusionToggle: {fileID: 863623295}
   startButton: {fileID: 189825007}
   defaultPlayTime: 60
-  defaultGemasVerticales: 4
-  defaultGemasHorizontales: 4
+  defaultGemasVerticales: 3
+  defaultGemasHorizontales: 3
 --- !u!1 &1525184260
 GameObject:
   m_ObjectHideFlags: 0
